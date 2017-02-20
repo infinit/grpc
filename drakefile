@@ -1,0 +1,72 @@
+import drake
+import drake.cxx
+
+
+with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
+
+
+class CMakeBuilder(drake.Builder):
+  def __init__(self, srcs, dsts, vars):
+    self.__vars = vars
+    self.__prefix = drake.Drake.current.prefix
+    drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
+  def execute(self):
+    if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix):
+      return False
+    return self.cmd('make', self.make_cmd, cwd = self.__prefix)
+  @property
+  def cmake_cmd(self):
+    cmd = ['cmake']
+    for (k, v) in self.__vars.items():
+      cmd.append('-D%s=%s' % (k, v))
+    cmd.append(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix)
+    return cmd
+  @property
+  def make_cmd(self):
+    return ['make']
+  def hash(self):
+    return ''.join([
+      str(self.cmake_cmd),
+      str(self.make_cmd),
+    ])
+  def __str__(self):
+    return '%s' % (self.__class__.__name__)
+
+cxx_config = None
+protoc = None
+grpc_cpp_plugin = None
+
+
+def configure(
+    cxx_toolkit,
+    in_cxx_config,
+    cmake_env = {}
+):
+  global cxx_config, protoc, grpc_cpp_plugin
+  protoc = drake.path_build('third_party/protobuf/protoc', absolute = True)
+  srcs = drake.nodes(
+    'CMakeLists.txt',
+    )
+  dsts = drake.nodes(
+    'grpc_cpp_plugin',
+     protoc,
+    'libgrpc.a',
+    'libgrpc++.a',
+    )
+  cmake = CMakeBuilder(srcs, dsts, cmake_env)
+  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin', absolute = True)
+  cxx_config = drake.cxx.Config(in_cxx_config)
+  cxx_config.add_local_include_path('third_party/protobuf/src')
+  cxx_config.add_local_include_path('include')
+  cxx_config.ldflag('-L%s' % drake.Drake.current.prefix)
+  cxx_config.lib('grpc++')
+  cxx_config.lib('grpc')
+  cxx_config.lib('gpr')
+  cxx_config.lib('protobuf')
+  cxx_config.ldflag('-L%s' % drake.path_build('third_party/protobuf', absolute = True))
+  cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/crypto', absolute = True))
+  cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/ssl', absolute = True))
+  cxx_config.lib('ssl')
+  cxx_config.lib('crypto')
+  cxx_config.lib('z')
