@@ -39,6 +39,7 @@
 #include "src/core/lib/iomgr/ev_epoll_linux.h"
 
 #include <assert.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <poll.h>
 #include <pthread.h>
@@ -60,6 +61,21 @@
 #include "src/core/lib/iomgr/workqueue.h"
 #include "src/core/lib/profiling/timers.h"
 #include "src/core/lib/support/block_annotate.h"
+
+int plugin_epoll_pwait(char* symbol,
+                      int epfd, struct epoll_event *events,
+                      int maxevents, int timeout,
+                      const sigset_t *sigmask)
+{
+  static void* fptr = NULL;
+  if (!fptr) {
+    fptr = dlsym(RTLD_DEFAULT, symbol);
+    if (!fptr)
+      assert(!"failed to load epoll_pwait plugin");
+  }
+  int (*ep)(int, struct epoll_event*, int, int, const sigset_t*) = fptr;
+  return (*ep)(epfd, events, maxevents, timeout, sigmask);
+}
 
 /* TODO: sreek - Move this to init.c and initialize this like other tracers. */
 static int grpc_polling_trace = 0; /* Disabled by default */
@@ -1429,6 +1445,9 @@ static bool maybe_do_workqueue_work(grpc_exec_ctx *exec_ctx,
   return false;
 }
 
+static char* epoll_symbol = NULL;
+static int epoll_symbol_init = 0;
+
 #define GRPC_EPOLL_MAX_EVENTS 100
 /* Note: sig_mask contains the signal mask to use *during* epoll_wait() */
 static void pollset_work_and_unlock(grpc_exec_ctx *exec_ctx,
@@ -1442,6 +1461,10 @@ static void pollset_work_and_unlock(grpc_exec_ctx *exec_ctx,
   char *err_msg;
   const char *err_desc = "pollset_work_and_unlock";
   GPR_TIMER_BEGIN("pollset_work_and_unlock", 0);
+  if (!epoll_symbol_init) {
+    epoll_symbol_init = 1;
+    epoll_symbol = getenv("GRPC_EPOLL_SYMBOL");
+  }
 
   /* We need to get the epoll_fd to wait on. The epoll_fd is in inside the
      latest polling island pointed by pollset->po.pi
@@ -1492,8 +1515,11 @@ static void pollset_work_and_unlock(grpc_exec_ctx *exec_ctx,
     g_current_thread_polling_island = pi;
 
     GRPC_SCHEDULING_START_BLOCKING_REGION;
-    ep_rv = epoll_pwait(epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, timeout_ms,
-                        sig_mask);
+    if (epoll_symbol)
+      ep_rv = plugin_epoll_pwait(epoll_symbol, epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, timeout_ms, sig_mask);
+    else
+      ep_rv = epoll_pwait(epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, timeout_ms,
+                          sig_mask);
     GRPC_SCHEDULING_END_BLOCKING_REGION;
     if (ep_rv < 0) {
       if (errno != EINTR) {
@@ -1507,7 +1533,10 @@ static void pollset_work_and_unlock(grpc_exec_ctx *exec_ctx,
         GRPC_POLLING_TRACE(
             "pollset_work: pollset: %p, worker: %p received kick",
             (void *)pollset, (void *)worker);
-        ep_rv = epoll_wait(epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, 0);
+        if (epoll_symbol)
+          ep_rv = plugin_epoll_pwait(epoll_symbol, epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, 0, NULL);
+        else
+          ep_rv = epoll_wait(epoll_fd, ep_ev, GRPC_EPOLL_MAX_EVENTS, 0);
       }
     }
 
