@@ -45,17 +45,17 @@ def configure(
 ):
   global cxx_config, protoc, grpc_cpp_plugin
   protoc = drake.path_build('third_party/protobuf/protoc', absolute = True)
+  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin', absolute = True)
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
   dsts = drake.nodes(
-    'grpc_cpp_plugin',
+     grpc_cpp_plugin,
      protoc,
     'libgrpc.a',
     'libgrpc++.a',
     )
   cmake = CMakeBuilder(srcs, dsts, cmake_env)
-  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin', absolute = True)
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config.add_local_include_path('third_party/protobuf/src')
   cxx_config.add_local_include_path('include')
