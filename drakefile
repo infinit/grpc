@@ -20,7 +20,10 @@ class CMakeBuilder(drake.Builder):
     cmd = ['cmake']
     for (k, v) in self.__vars.items():
       cmd.append('-D%s=%s' % (k, v))
-    cmd.append(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix)
+    if str(drake.path_source())[0] == '/':
+      cmd.append(drake.path_source() / self.__prefix)
+    else:
+      cmd.append(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix)
     return cmd
   @property
   def make_cmd(self):
