@@ -12,7 +12,7 @@ class CMakeBuilder(drake.Builder):
   def __init__(self, cxx_toolkit, srcs, dsts, vars):
     self.__vars = vars
     self.__prefix = drake.Drake.current.prefix
-    self.__env = os.environ
+    self.__env = dict(os.environ)
     self.__env.update({
       'CC': cxx_toolkit.c,
       'CXX': cxx_toolkit.cxx,
