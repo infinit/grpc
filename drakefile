@@ -1,18 +1,25 @@
 import drake
 import drake.cxx
 
+import os
+
 
 with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
 
 class CMakeBuilder(drake.Builder):
-  def __init__(self, srcs, dsts, vars):
+  def __init__(self, cxx_toolkit, srcs, dsts, vars):
     self.__vars = vars
     self.__prefix = drake.Drake.current.prefix
+    self.__env = os.environ
+    self.__env.update({
+      'CC': cxx_toolkit.c,
+      'CXX': cxx_toolkit.cxx,
+    })
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
-    if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix):
+    if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix, env = self.__env):
       return False
     return self.cmd('make', self.make_cmd, cwd = self.__prefix)
   @property
@@ -58,7 +65,7 @@ def configure(
     'libgrpc.a',
     'libgrpc++.a',
     )
-  cmake = CMakeBuilder(srcs, dsts, cmake_env)
+  cmake = CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env)
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config.add_local_include_path('third_party/protobuf/src')
   cxx_config.add_local_include_path('include')
@@ -67,6 +74,7 @@ def configure(
   cxx_config.lib('grpc')
   cxx_config.lib('gpr')
   cxx_config.lib('protobuf')
+  cxx_config.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
   cxx_config.ldflag('-L%s' % drake.path_build('third_party/protobuf', absolute = True))
   cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/crypto', absolute = True))
   cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/ssl', absolute = True))
