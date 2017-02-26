@@ -48,9 +48,22 @@ set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "https://github.com/grpc/grpc/issues/")
 project(${PACKAGE_NAME} C CXX)
 
+if(WIN32)
+  set(RUN_HAVE_STD_REGEX
+     "0"
+     CACHE STRING "Result from TRY_RUN" FORCE)
+    set(RUN_HAVE_STEADY_CLOCK
+     "0"
+     CACHE STRING "Result from TRY_RUN" FORCE)
+endif()
 # Options
 option(gRPC_BUILD_TESTS "Build tests" OFF)
 
+if (WIN32)
+  if (NOT MSVC)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+  endif()
+endif()
 if (NOT MSVC)
   set(gRPC_INSTALL ON CACHE BOOL "Generate installation target")
 else()
@@ -96,6 +109,8 @@ if (MSVC)
   add_definitions(/wd4065 /wd4506)
   # TODO(jtattermusch): revisit C4267 occurrences throughout the code
   add_definitions(/wd4267)
+elseif(WIN32)
+  add_definitions(-D_WIN32_WINNT=0x600)
 endif()
 
 if (gRPC_USE_PROTO_LITE)
@@ -149,7 +164,7 @@ if("${gRPC_PROTOBUF_PROVIDER}" STREQUAL "module")
       set(_gRPC_PROTOBUF_PROTOC_LIBRARIES libprotoc)
     endif()
     if(TARGET protoc)
-      set(_gRPC_PROTOBUF_PROTOC protoc)
+      set(_gRPC_PROTOBUF_PROTOC "${CMAKE_CURRENT_BINARY_DIR}/third_party/protobuf/protoc${CMAKE_EXECUTABLE_SUFFIX}")
     endif()
   else()
       message(WARNING "gRPC_PROTOBUF_PROVIDER is \"module\" but PROTOBUF_ROOT_DIR is wrong")
@@ -247,7 +262,7 @@ if(UNIX)
   set(_gRPC_ALLTARGETS_LIBRARIES dl rt m pthread)
 endif()
 
-if(WIN32 AND MSVC)
+if(WIN32)
   set(_gRPC_BASELIB_LIBRARIES wsock32 ws2_32)
 endif()
 
@@ -5629,16 +5644,23 @@ target_link_libraries(grpc_print_google_default_creds_token
   ${_gRPC_ALLTARGETS_LIBRARIES}
   grpc
   gpr
+  ${_gRPC_BASELIB_LIBRARIES}
 )
 
-
-if (gRPC_INSTALL)
-  install(TARGETS grpc_print_google_default_creds_token EXPORT gRPCTargets
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  )
+if(WIN32)
+  MESSAGE("CANARD ${_gRPC_ALLTARGETS_LIBRARIES}")
+  #target_link_libraries(grpc_print_google_default_creds_token ws2_32)
+  #add_dependencies(grpc_print_google_default_creds_token ws2_32)
 endif()
+
+
+#if (gRPC_INSTALL)
+#  install(TARGETS grpc_print_google_default_creds_token EXPORT gRPCTargets
+#    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+#    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#  )
+#endif()
 
 if (gRPC_BUILD_TESTS)
 

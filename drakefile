@@ -17,6 +17,13 @@ class CMakeBuilder(drake.Builder):
       'CC': cxx_toolkit.c,
       'CXX': cxx_toolkit.cxx,
     })
+    # cmake 3 compat
+    self.__vars.update({'CMAKE_SYSTEM_PROCESSOR': 'x86_64'})
+    if cxx_toolkit.os is drake.os.windows:
+      self.__vars.update({
+        'CMAKE_SYSTEM_NAME': 'Windows',
+        'CMAKE_RC_COMPILER': cxx_toolkit.cxx[0:-3] + 'windres'
+      })
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
     if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix, env = self.__env):
