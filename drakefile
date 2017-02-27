@@ -22,7 +22,8 @@ class CMakeBuilder(drake.Builder):
     if cxx_toolkit.os is drake.os.windows:
       self.__vars.update({
         'CMAKE_SYSTEM_NAME': 'Windows',
-        'CMAKE_RC_COMPILER': cxx_toolkit.cxx[0:-3] + 'windres'
+        'CMAKE_RC_COMPILER': cxx_toolkit.cxx[0:-3] + 'windres',
+        'CMAKE_ASM_NASM_COMPILER': cxx_toolkit.cxx[0:-3] + 'as',
       })
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
