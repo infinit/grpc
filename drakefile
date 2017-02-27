@@ -9,7 +9,7 @@ with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
 
 
 class CMakeBuilder(drake.Builder):
-  def __init__(self, cxx_toolkit, srcs, dsts, vars):
+  def __init__(self, cxx_toolkit, srcs, dsts, vars, targets = None):
     self.__vars = vars
     self.__prefix = drake.Drake.current.prefix
     self.__env = dict(os.environ)
@@ -17,6 +17,7 @@ class CMakeBuilder(drake.Builder):
       'CC': cxx_toolkit.c,
       'CXX': cxx_toolkit.cxx,
     })
+    self.__targets = targets
     # cmake 3 compat
     self.__vars.update({'CMAKE_SYSTEM_PROCESSOR': 'x86_64'})
     if cxx_toolkit.os is drake.os.windows:
@@ -29,7 +30,18 @@ class CMakeBuilder(drake.Builder):
   def execute(self):
     if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix, env = self.__env):
       return False
-    return self.cmd('make', self.make_cmd, cwd = self.__prefix)
+    if self.__targets is None:
+      return self.cmd('make', self.make_cmd, cwd = self.__prefix)
+    for t in self.__targets:
+      if isinstance(t, str):
+        tgt = t
+        wd = ''
+      else:
+        tgt = t[1]
+        wd = t[0]
+      if not self.cmd('make %s' % tgt, ['make', tgt], cwd = self.__prefix / wd):
+        return False
+    return True
   @property
   def cmake_cmd(self):
     cmd = ['cmake']
@@ -52,6 +64,7 @@ class CMakeBuilder(drake.Builder):
     return '%s' % (self.__class__.__name__)
 
 cxx_config = None
+cxx_config_lib = None
 protoc = None
 grpc_cpp_plugin = None
 
@@ -61,9 +74,10 @@ def configure(
     in_cxx_config,
     cmake_env = {}
 ):
-  global cxx_config, protoc, grpc_cpp_plugin
-  protoc = drake.path_build('third_party/protobuf/protoc', absolute = True)
-  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin', absolute = True)
+  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin
+  EXE = (cxx_toolkit.os == drake.os.windows) and '.exe' or ''
+  protoc = drake.path_build('third_party/protobuf/protoc' + EXE, absolute = True)
+  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
@@ -73,19 +87,34 @@ def configure(
     'libgrpc.a',
     'libgrpc++.a',
     )
-  cmake = CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env)
+  # do not build everything
+  targets = [
+    'grpc_cpp_plugin',
+    'grpc',
+    ('third_party/protobuf', 'protoc')
+  ]
+  cmake = CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets)
   cxx_config = drake.cxx.Config(in_cxx_config)
+  cxx_config.define('_WIN32_WINNT=0x600')
   cxx_config.add_local_include_path('third_party/protobuf/src')
   cxx_config.add_local_include_path('include')
-  cxx_config.ldflag('-L%s' % drake.Drake.current.prefix)
-  cxx_config.lib('grpc++')
-  cxx_config.lib('grpc')
-  cxx_config.lib('gpr')
-  cxx_config.lib('protobuf')
-  cxx_config.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
-  cxx_config.ldflag('-L%s' % drake.path_build('third_party/protobuf', absolute = True))
-  cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/crypto', absolute = True))
-  cxx_config.ldflag('-L%s' % drake.path_build('third_party/boringssl/ssl', absolute = True))
-  cxx_config.lib('ssl')
-  cxx_config.lib('crypto')
-  cxx_config.lib('z')
+  if cxx_toolkit.os is drake.os.windows:
+    cxx_config_lib = drake.cxx.Config(cxx_config)
+    cxx_config_lib.use_whole_archive()
+  else:
+    cxx_config_lib = cxx_config
+  cxx_config_lib.ldflag('-L%s' % drake.Drake.current.prefix)
+  cxx_config_lib.lib('grpc++')
+  cxx_config_lib.lib('grpc')
+  cxx_config_lib.lib('gpr')
+  cxx_config_lib.lib('protobuf')
+  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
+  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/protobuf', absolute = True))
+  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/boringssl/crypto', absolute = True))
+  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/boringssl/ssl', absolute = True))
+  cxx_config_lib.lib('ssl')
+  cxx_config_lib.lib('crypto')
+  cxx_config_lib.lib('z')
+  if cxx_toolkit.os is drake.os.windows:
+    cxx_config_lib.lib('ws2_32')
+    cxx_config_lib.lib('kernel32')
