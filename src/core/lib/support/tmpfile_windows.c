@@ -40,6 +40,11 @@
 #include <string.h>
 #include <tchar.h>
 
+#ifdef __MINGW32__
+#include <sec_api/tchar_s.h>
+#define _tfopen_s _wfopen_s
+#endif
+
 #include <grpc/support/alloc.h>
 #include <grpc/support/log.h>
 #include <grpc/support/string_util.h>
