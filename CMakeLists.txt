@@ -261,7 +261,7 @@ endif()
 if(UNIX)
   set(_gRPC_ALLTARGETS_LIBRARIES dl m pthread)
   if(NOT APPLE)
-    set(_gRPC_ALLTARGETS_LIBRARIES "${_gRPC_ALLTARGETS_LIBRARIES} rt")
+    set(_gRPC_ALLTARGETS_LIBRARIES ${_gRPC_ALLTARGETS_LIBRARIES} rt)
   endif()
 endif()
 
