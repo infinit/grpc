@@ -8184,8 +8184,11 @@ target_link_libraries(grpc_cpp_plugin
   ${_gRPC_PROTOBUF_LIBRARIES}
   ${_gRPC_ALLTARGETS_LIBRARIES}
   grpc_plugin_support
-  -static
 )
+
+if(WIN32 AND NOT MSVC)
+  target_link_libraries(grpc_cpp_plugin -static)
+endif()
 
 
 if (gRPC_INSTALL)
