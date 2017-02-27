@@ -91,6 +91,7 @@ def configure(
   targets = [
     'grpc_cpp_plugin',
     'grpc',
+    'grpc++',
     ('third_party/protobuf', 'protoc')
   ]
   cmake = CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets)
