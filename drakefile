@@ -67,6 +67,7 @@ cxx_config = None
 cxx_config_lib = None
 protoc = None
 grpc_cpp_plugin = None
+libgrpcxx = None
 
 
 def configure(
@@ -74,18 +75,19 @@ def configure(
     in_cxx_config,
     cmake_env = {}
 ):
-  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin
+  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, libgrpcxx
   EXE = (cxx_toolkit.os == drake.os.windows) and '.exe' or ''
   protoc = drake.path_build('third_party/protobuf/protoc' + EXE, absolute = True)
   grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
+  libgrpcxx = drake.path_build('libgrpc++.a', absolute = True)
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
   dsts = drake.nodes(
      grpc_cpp_plugin,
      protoc,
-    'libgrpc.a',
-    'libgrpc++.a',
+     'libgrpc.a',
+     libgrpcxx,
     )
   # do not build everything
   targets = [
