@@ -72,6 +72,7 @@ cxx_config_lib = None
 protoc = None
 grpc_cpp_plugin = None
 libgrpcxx = None
+sources = None
 
 
 def configure(
@@ -79,7 +80,7 @@ def configure(
     in_cxx_config,
     cmake_env = {}
 ):
-  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, libgrpcxx
+  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, libgrpcxx, sources
   EXE = (cxx_toolkit.os == drake.os.windows) and '.exe' or ''
   protoc = drake.path_build('third_party/protobuf/protoc' + EXE, absolute = True)
   grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
@@ -110,17 +111,16 @@ def configure(
     cxx_config_lib.use_whole_archive()
   else:
     cxx_config_lib = cxx_config
-  cxx_config_lib.ldflag('-L%s' % drake.Drake.current.prefix)
-  cxx_config_lib.lib('grpc++')
-  cxx_config_lib.lib('grpc')
-  cxx_config_lib.lib('gpr')
-  cxx_config_lib.lib('protobuf')
+  sources = drake.nodes(
+    drake.path_build('libgrpc++.a', absolute = True),
+    drake.path_build('libgrpc.a', absolute = True),
+    drake.path_build('libgpr.a', absolute = True),
+    drake.path_build('third_party/protobuf/libprotobuf.a', absolute = True),
+    drake.path_build('third_party/boringssl/ssl/libssl.a', absolute = True),
+    drake.path_build('third_party/boringssl/crypto/libcrypto.a', absolute = True),
+    )
+
   cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
-  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/protobuf', absolute = True))
-  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/boringssl/crypto', absolute = True))
-  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/boringssl/ssl', absolute = True))
-  cxx_config_lib.lib('ssl')
-  cxx_config_lib.lib('crypto')
   cxx_config_lib.lib('z')
   if cxx_toolkit.os is drake.os.windows:
     cxx_config_lib.lib('ws2_32')
