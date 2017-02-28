@@ -17,6 +17,11 @@ class CMakeBuilder(drake.Builder):
       'CC': cxx_toolkit.c,
       'CXX': cxx_toolkit.cxx,
     })
+    mdt = self.__env.get('MACOSX_DEPLOYMENT_TARGET', None)
+    # cmake sets the appropriate -isysroot depending on MACOSX_DEPLOYMENT_TARGET
+    # but the STL in SDKS prior to 10.9 are not cxx11 compliant (no std::unique_ptr)
+    if mdt and (mdt == '10.7'or mdt == '10.8'):
+      self.__env['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
     self.__targets = targets
     self.__cxx_toolkit = cxx_toolkit
     # cmake 3 compat
@@ -29,11 +34,8 @@ class CMakeBuilder(drake.Builder):
       })
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
-    if not self.cmd('cmake', self.cmake_cmd, cwd = self.__prefix, env = self.__env):
+    if not self.cmd(' '.join(self.cmake_cmd), self.cmake_cmd, cwd = self.__prefix, env = self.__env):
       return False
-    if self.__cxx_toolkit.os is drake.os.macos:
-        # workaround KB3849102LOL: something is wrong with first cmake invokation
-        os.unlink(str(self.__prefix / 'CMakeCache.txt'))
     if self.__targets is None:
       return self.cmd('make', self.make_cmd, cwd = self.__prefix)
     for t in self.__targets:
@@ -52,9 +54,9 @@ class CMakeBuilder(drake.Builder):
     for (k, v) in self.__vars.items():
       cmd.append('-D%s=%s' % (k, v))
     if str(drake.path_source())[0] == '/':
-      cmd.append(drake.path_source() / self.__prefix)
+      cmd.append(str(drake.path_source() / self.__prefix))
     else:
-      cmd.append(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix)
+      cmd.append(str(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix))
     return cmd
   @property
   def make_cmd(self):
