@@ -5650,13 +5650,6 @@ target_link_libraries(grpc_print_google_default_creds_token
   ${_gRPC_BASELIB_LIBRARIES}
 )
 
-if(WIN32)
-  MESSAGE("CANARD ${_gRPC_ALLTARGETS_LIBRARIES}")
-  #target_link_libraries(grpc_print_google_default_creds_token ws2_32)
-  #add_dependencies(grpc_print_google_default_creds_token ws2_32)
-endif()
-
-
 #if (gRPC_INSTALL)
 #  install(TARGETS grpc_print_google_default_creds_token EXPORT gRPCTargets
 #    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
