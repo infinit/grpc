@@ -88,12 +88,18 @@ def configure(
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
+  sources = drake.nodes(
+    drake.path_build('libgrpc++.a', absolute = True),
+    drake.path_build('libgrpc.a', absolute = True),
+    drake.path_build('libgpr.a', absolute = True),
+    drake.path_build('third_party/protobuf/libprotobuf.a', absolute = True),
+    drake.path_build('third_party/boringssl/ssl/libssl.a', absolute = True),
+    drake.path_build('third_party/boringssl/crypto/libcrypto.a', absolute = True),
+    )
   dsts = drake.nodes(
      grpc_cpp_plugin,
      protoc,
-     'libgrpc.a',
-     libgrpcxx,
-    )
+    ) + sources
   # do not build everything
   targets = [
     'grpc_cpp_plugin',
@@ -106,15 +112,6 @@ def configure(
   cxx_config.define('_WIN32_WINNT=0x600')
   cxx_config.add_local_include_path('third_party/protobuf/src')
   cxx_config.add_local_include_path('include')
-
-  sources = drake.nodes(
-    drake.path_build('libgrpc++.a', absolute = True),
-    drake.path_build('libgrpc.a', absolute = True),
-    drake.path_build('libgpr.a', absolute = True),
-    drake.path_build('third_party/protobuf/libprotobuf.a', absolute = True),
-    drake.path_build('third_party/boringssl/ssl/libssl.a', absolute = True),
-    drake.path_build('third_party/boringssl/crypto/libcrypto.a', absolute = True),
-    )
 
   cxx_config_lib = drake.cxx.Config(cxx_config)
   cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
