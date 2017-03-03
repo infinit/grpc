@@ -38,7 +38,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-
 cmake_minimum_required(VERSION 2.8)
 
 set(PACKAGE_NAME      "grpc")
