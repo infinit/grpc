@@ -51,7 +51,7 @@ class CMakeBuilder(drake.Builder):
   @property
   def cmake_cmd(self):
     cmd = ['cmake']
-    for (k, v) in self.__vars.items():
+    for (k, v) in sorted(self.__vars.items()):
       cmd.append('-D%s=%s' % (k, v))
     if str(drake.path_source())[0] == '/':
       cmd.append(str(drake.path_source() / self.__prefix))
@@ -62,10 +62,7 @@ class CMakeBuilder(drake.Builder):
   def make_cmd(self):
     return ['make']
   def hash(self):
-    return ''.join([
-      str(self.cmake_cmd),
-      str(self.make_cmd),
-    ])
+    return (self.cmake_cmd, self.make_cmd)
   def __str__(self):
     return '%s' % (self.__class__.__name__)
 
