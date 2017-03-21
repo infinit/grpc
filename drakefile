@@ -33,6 +33,7 @@ class CMakeBuilder(drake.Builder):
         'CMAKE_RC_COMPILER': cxx_toolkit.cxx[0:-3] + 'windres',
         'CMAKE_ASM_NASM_COMPILER': cxx_toolkit.cxx[0:-3] + 'as',
       })
+    dsts.append(self.__cmake_cache)
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
     # cmake fails if the cache was moved
