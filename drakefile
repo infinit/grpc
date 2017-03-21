@@ -17,6 +17,7 @@ class CMakeBuilder(drake.Builder):
       'CC': cxx_toolkit.c,
       'CXX': cxx_toolkit.cxx,
     })
+    self.__cmake_cache = drake.node('CMakeCache.txt')
     mdt = self.__env.get('MACOSX_DEPLOYMENT_TARGET', None)
     # cmake sets the appropriate -isysroot depending on MACOSX_DEPLOYMENT_TARGET
     # but the STL in SDKS prior to 10.9 are not cxx11 compliant (no std::unique_ptr)
@@ -34,6 +35,10 @@ class CMakeBuilder(drake.Builder):
       })
     drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
   def execute(self):
+    # cmake fails if the cache was moved
+    cpath = str(self.__cmake_cache.path())
+    if os.path.exists(cpath):
+      os.unlink(cpath)
     if not self.cmd(' '.join(self.cmake_cmd), self.cmake_cmd, cwd = self.__prefix, env = self.__env):
       return False
     if self.__targets is None:
