@@ -24,7 +24,7 @@ def configure(
     cmake_env = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
-  EXE = (cxx_toolkit.os == drake.os.windows) and '.exe' or ''
+  EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   global protobuf_include, protobuf_lib
   protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
@@ -55,7 +55,10 @@ def configure(
     'grpc_python_plugin',
     ('third_party/protobuf', 'protoc') # (workdir, target)
   ]
-  cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
+  if drake.path_source().absolute():
+    cmake_source = drake.path_source() / drake.Drake.current.prefix
+  else:
+    cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
   cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets,
                                    path_to_cmake_source = cmake_source)
   cxx_config = drake.cxx.Config(in_cxx_config)
