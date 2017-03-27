@@ -1,4 +1,5 @@
 import drake
+import drake.cmake
 import drake.cxx
 
 import os
@@ -7,79 +8,15 @@ import os
 with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
-
-class CMakeBuilder(drake.Builder):
-  def __init__(self, cxx_toolkit, srcs, dsts, vars, targets = None):
-    self.__vars = vars
-    self.__prefix = drake.Drake.current.prefix
-    self.__env = dict(os.environ)
-    self.__env.update({
-      'CC': cxx_toolkit.c,
-      'CXX': cxx_toolkit.cxx,
-    })
-    self.__cmake_cache = drake.node('CMakeCache.txt')
-    mdt = self.__env.get('MACOSX_DEPLOYMENT_TARGET', None)
-    # cmake sets the appropriate -isysroot depending on MACOSX_DEPLOYMENT_TARGET
-    # but the STL in SDKS prior to 10.9 are not cxx11 compliant (no std::unique_ptr)
-    if mdt and (mdt == '10.7'or mdt == '10.8'):
-      self.__env['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
-    self.__targets = targets
-    self.__cxx_toolkit = cxx_toolkit
-    # cmake 3 compat
-    self.__vars.update({'CMAKE_SYSTEM_PROCESSOR': 'x86_64'})
-    if cxx_toolkit.os is drake.os.windows:
-      self.__vars.update({
-        'CMAKE_SYSTEM_NAME': 'Windows',
-        'CMAKE_RC_COMPILER': cxx_toolkit.cxx[0:-3] + 'windres',
-        'CMAKE_ASM_NASM_COMPILER': cxx_toolkit.cxx[0:-3] + 'as',
-      })
-    dsts.append(self.__cmake_cache)
-    drake.Builder.__init__(self, srcs = srcs, dsts = dsts)
-  def execute(self):
-    # cmake fails if the cache was moved
-    cpath = str(self.__cmake_cache.path())
-    if os.path.exists(cpath):
-      os.unlink(cpath)
-    if not self.cmd(' '.join(self.cmake_cmd), self.cmake_cmd, cwd = self.__prefix, env = self.__env):
-      return False
-    if self.__targets is None:
-      return self.cmd('make', self.make_cmd, cwd = self.__prefix)
-    for t in self.__targets:
-      if isinstance(t, str):
-        tgt = t
-        wd = ''
-      else:
-        tgt = t[1]
-        wd = t[0]
-      if not self.cmd('make %s' % tgt, ['make', tgt], cwd = self.__prefix / wd):
-        return False
-    return True
-  @property
-  def cmake_cmd(self):
-    cmd = ['cmake']
-    for (k, v) in sorted(self.__vars.items()):
-      cmd.append('-D%s=%s' % (k, v))
-    if str(drake.path_source())[0] == '/':
-      cmd.append(str(drake.path_source() / self.__prefix))
-    else:
-      cmd.append(str(drake.path_source() / '..' / '..' / '..' / '..' / self.__prefix))
-    return cmd
-  @property
-  def make_cmd(self):
-    return ['make']
-  def hash(self):
-    return (self.cmake_cmd, self.make_cmd)
-  def __str__(self):
-    return '%s' % (self.__class__.__name__)
-
 cxx_config = None
 cxx_config_lib = None
 protoc = None
+protobuf_include = None
+protobuf_lib = None
 grpc_cpp_plugin = None
 grpc_python_plugin = None
 libgrpcxx = None
 sources = None
-
 
 def configure(
     cxx_toolkit,
@@ -87,39 +24,46 @@ def configure(
     cmake_env = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
-  EXE = (cxx_toolkit.os == drake.os.windows) and '.exe' or ''
-  protoc = drake.path_build('third_party/protobuf/protoc' + EXE, absolute = True)
+  EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
+  protoc = drake.Node('third_party/protobuf/protoc' + EXE)
+  global protobuf_include, protobuf_lib
+  protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
+  protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
   grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
   grpc_python_plugin = drake.path_build('grpc_python_plugin' + EXE, absolute = True)
   libgrpcxx = drake.path_build('libgrpc++.a', absolute = True)
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
-  sources = drake.nodes(
+  sources = [protobuf_lib] + drake.nodes(
     drake.path_build('libgrpc++.a', absolute = True),
     drake.path_build('libgrpc.a', absolute = True),
     drake.path_build('libgpr.a', absolute = True),
-    drake.path_build('third_party/protobuf/libprotobuf.a', absolute = True),
     drake.path_build('third_party/boringssl/ssl/libssl.a', absolute = True),
     drake.path_build('third_party/boringssl/crypto/libcrypto.a', absolute = True),
     )
   dsts = drake.nodes(
      grpc_cpp_plugin,
-     grpc_python_plugin,
-     protoc,
-    ) + sources
+     grpc_python_plugin) + [
+     protoc
+     ] + sources
   # do not build everything
   targets = [
     'grpc',
     'grpc++',
     'grpc_cpp_plugin',
     'grpc_python_plugin',
-    ('third_party/protobuf', 'protoc')
+    ('third_party/protobuf', 'protoc') # (workdir, target)
   ]
-  cmake = CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets)
+  if str(drake.path_source())[0] == '/':
+    cmake_source = drake.path_source() / drake.Drake.current.prefix
+  else:
+    cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
+  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets,
+                                   path_to_cmake_source = cmake_source)
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config.define('_WIN32_WINNT=0x600')
-  cxx_config.add_system_include_path('third_party/protobuf/src')
+  cxx_config.add_system_include_path(protobuf_include)
   cxx_config.add_system_include_path('include')
 
   cxx_config_lib = drake.cxx.Config(cxx_config)
