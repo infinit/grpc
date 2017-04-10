@@ -4,6 +4,14 @@ import drake.cxx
 
 import os
 
+shlibexts = {
+  drake.os.android: 'so',
+  drake.os.ios: 'dylib',
+  drake.os.ios_simulator: 'dylib',
+  drake.os.linux: 'so',
+  drake.os.macos: 'dylib',
+  drake.os.windows: 'dll',
+}
 
 with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
@@ -27,7 +35,9 @@ def configure(
   EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   global protobuf_include, protobuf_lib
-  protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
+  protobuf_lib = drake.cxx.DynLib(drake.path_root()
+                                  / drake.path_build('third_party/protobuf/libprotobuf.{}'
+                                                     .format(shlibexts[cxx_toolkit.os])))
   protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
   grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
   grpc_python_plugin = drake.path_build('grpc_python_plugin' + EXE, absolute = True)
@@ -47,7 +57,7 @@ def configure(
      grpc_python_plugin) + [
      protoc
      ] + sources
-  # do not build everything
+  # Do not build everything.
   targets = [
     'grpc',
     'grpc++',
@@ -59,10 +69,15 @@ def configure(
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
     cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
-  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts, cmake_env, targets = targets,
+  cmake_env.update({
+    'protobuf_BUILD_SHARED_LIBS': 'ON',
+    'protobuf_BUILD_TESTS': 'OFF',
+    })
+  cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts,
+                                   vars = cmake_env, targets = targets,
                                    path_to_cmake_source = cmake_source)
   cxx_config = drake.cxx.Config(in_cxx_config)
-  cxx_config.define('_WIN32_WINNT=0x600')
+  cxx_config.define('_WIN32_WINNT', '0x600')
   cxx_config.add_system_include_path(protobuf_include)
   cxx_config.add_system_include_path('include')
 
