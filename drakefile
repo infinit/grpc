@@ -29,7 +29,7 @@ sources = None
 def configure(
     cxx_toolkit,
     in_cxx_config,
-    cmake_env = {}
+    cmake_vars = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
   EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
@@ -69,12 +69,12 @@ def configure(
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
     cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
-  cmake_env.update({
+  cmake_vars.update({
     'protobuf_BUILD_SHARED_LIBS': 'ON',
     'protobuf_BUILD_TESTS': 'OFF',
     })
   cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts,
-                                   vars = cmake_env, targets = targets,
+                                   vars = cmake_vars, targets = targets,
                                    path_to_cmake_source = cmake_source)
   cxx_config = drake.cxx.Config(in_cxx_config)
   cxx_config.define('_WIN32_WINNT', '0x600')
