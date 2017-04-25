@@ -19,6 +19,7 @@ with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
 cxx_config = None
 cxx_config_lib = None
 protoc = None
+protobuf_headers = None
 protobuf_include = None
 protobuf_lib = None
 grpc_cpp_plugin = None
@@ -34,11 +35,64 @@ def configure(
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
   EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
-  global protobuf_include, protobuf_lib
+  global protobuf_headers, protobuf_include, protobuf_lib
   protobuf_lib = drake.cxx.DynLib(drake.path_root()
                                   / drake.path_build('third_party/protobuf/libprotobuf.{}'
                                                      .format(shlibexts[cxx_toolkit.os])))
   protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
+  protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
+                                 for f in [
+    'any.h',
+    'any.pb.h',
+    'api.pb.h',
+    'arena.h',
+    'arena_test_util.h',
+    'arenastring.h',
+    'descriptor.h',
+    'descriptor.pb.h',
+    'descriptor_database.h',
+    'duration.pb.h',
+    'dynamic_message.h',
+    'empty.pb.h',
+    'extension_set.h',
+    'field_mask.pb.h',
+    'generated_enum_reflection.h',
+    'generated_enum_util.h',
+    'generated_message_reflection.h',
+    'generated_message_util.h',
+    'has_bits.h',
+    'map.h',
+    'map_entry.h',
+    'map_entry_lite.h',
+    'map_field.h',
+    'map_field_inl.h',
+    'map_field_lite.h',
+    'map_lite_test_util.h',
+    'map_test_util.h',
+    'map_test_util_impl.h',
+    'map_type_handler.h',
+    'message.h',
+    'message_lite.h',
+    'metadata.h',
+    'package_info.h',
+    'reflection.h',
+    'reflection_internal.h',
+    'reflection_ops.h',
+    'repeated_field.h',
+    'service.h',
+    'source_context.pb.h',
+    'struct.pb.h',
+    'test_util.h',
+    'test_util_lite.h',
+    'text_format.h',
+    'timestamp.pb.h',
+    'type.pb.h',
+    'unknown_field_set.h',
+    'wire_format.h',
+    'wire_format_lite.h',
+    'wire_format_lite_inl.h',
+    'wrappers.pb.h',
+    ]])
   grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
   grpc_python_plugin = drake.path_build('grpc_python_plugin' + EXE, absolute = True)
   libgrpcxx = drake.path_build('libgrpc++.a', absolute = True)
