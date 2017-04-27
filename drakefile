@@ -33,12 +33,16 @@ def configure(
     cmake_vars = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
-  EXE = '.exe' if cxx_toolkit.os == drake.os.windows else ''
+  windows = cxx_toolkit.os == drake.os.windows
+  EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   global protobuf_headers, protobuf_include, protobuf_lib
-  protobuf_lib = drake.cxx.DynLib(drake.path_root()
-                                  / drake.path_build('third_party/protobuf/libprotobuf.{}'
-                                                     .format(shlibexts[cxx_toolkit.os])))
+  if windows:
+    protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
+  else:
+    protobuf_lib = drake.cxx.DynLib(drake.path_root()
+                                    / drake.path_build('third_party/protobuf/libprotobuf.{}'
+                                                       .format(shlibexts[cxx_toolkit.os])))
   protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
@@ -124,7 +128,7 @@ def configure(
   else:
     cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
   cmake_vars.update({
-    'protobuf_BUILD_SHARED_LIBS': 'ON',
+    'protobuf_BUILD_SHARED_LIBS': 'OFF' if windows else 'ON' ,
     'protobuf_BUILD_TESTS': 'OFF',
     })
   cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts,
@@ -139,7 +143,7 @@ def configure(
   cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
   cxx_config_lib.lib('z')
   cxx_config_lib.use_whole_archive()
-  if cxx_toolkit.os is drake.os.windows:
+  if windows:
     cxx_config_lib.lib('ws2_32')
     cxx_config_lib.lib('kernel32')
 
