@@ -40,7 +40,8 @@ def configure(
   # protobuf lib.
   global protobuf_headers, protobuf_include, protobuf_lib
   if windows:
-    protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
+    lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
+    protobuf_lib = lib
   else:
     lib = drake.cxx.DynLib(drake.path_root()
                            / drake.path_build('third_party/protobuf/libprotobuf.{}'
@@ -106,7 +107,7 @@ def configure(
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
-  sources = [protobuf_lib] + drake.nodes(
+  sources = [lib] + drake.nodes(
     drake.path_build('libgrpc++.a', absolute = True),
     drake.path_build('libgrpc.a', absolute = True),
     drake.path_build('libgpr.a', absolute = True),
@@ -117,7 +118,7 @@ def configure(
      grpc_cpp_plugin,
      grpc_python_plugin) + [
      protoc
-     ]# + sources
+     ] + sources
   # Do not build everything.
   targets = [
     'grpc',
