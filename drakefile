@@ -30,19 +30,22 @@ sources = None
 def configure(
     cxx_toolkit,
     in_cxx_config,
+    PatchAndInstall,
     cmake_vars = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
   windows = cxx_toolkit.os == drake.os.windows
   EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
+  # protobuf lib.
   global protobuf_headers, protobuf_include, protobuf_lib
   if windows:
     protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
   else:
-    protobuf_lib = drake.cxx.DynLib(drake.path_root()
-                                    / drake.path_build('third_party/protobuf/libprotobuf.{}'
-                                                       .format(shlibexts[cxx_toolkit.os])))
+    lib = drake.cxx.DynLib(drake.path_root()
+                           / drake.path_build('third_party/protobuf/libprotobuf.{}'
+                                              .format(shlibexts[cxx_toolkit.os])))
+    protobuf_lib = drake.copy(lib, '.', strip_prefix = True, builder = PatchAndInstall)
   protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
@@ -114,7 +117,7 @@ def configure(
      grpc_cpp_plugin,
      grpc_python_plugin) + [
      protoc
-     ] + sources
+     ]# + sources
   # Do not build everything.
   targets = [
     'grpc',
