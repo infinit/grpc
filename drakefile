@@ -20,7 +20,6 @@ cxx_config = None
 cxx_config_lib = None
 protoc = None
 protobuf_headers = None
-protobuf_include = None
 protobuf_lib = None
 grpc_cpp_plugin = None
 grpc_python_plugin = None
@@ -30,7 +29,6 @@ sources = None
 def configure(
     cxx_toolkit,
     in_cxx_config,
-    PatchAndInstall,
     cmake_vars = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
@@ -38,16 +36,13 @@ def configure(
   EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   # protobuf lib.
-  global protobuf_headers, protobuf_include, protobuf_lib
+  global protobuf_headers, protobuf_lib
   if windows:
-    lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
-    protobuf_lib = lib
+    protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
   else:
-    lib = drake.cxx.DynLib(drake.path_root()
-                           / drake.path_build('third_party/protobuf/libprotobuf.{}'
-                                              .format(shlibexts[cxx_toolkit.os])))
-    protobuf_lib = drake.copy(lib, '.', strip_prefix = True, builder = PatchAndInstall)
-  protobuf_include = drake.path_root() / drake.path_source('third_party/protobuf/src')
+    protobuf_lib = drake.cxx.DynLib(
+      'third_party/protobuf/libprotobuf.{}'
+      .format(shlibexts[cxx_toolkit.os]))
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
     'any.h',
@@ -107,17 +102,18 @@ def configure(
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
-  sources = [lib] + drake.nodes(
-    drake.path_build('libgrpc++.a', absolute = True),
-    drake.path_build('libgrpc.a', absolute = True),
-    drake.path_build('libgpr.a', absolute = True),
-    drake.path_build('third_party/boringssl/ssl/libssl.a', absolute = True),
-    drake.path_build('third_party/boringssl/crypto/libcrypto.a', absolute = True),
-    )
+  sources = drake.nodes(
+    'libgrpc++.a',
+    'libgrpc.a',
+    'libgpr.a',
+    'third_party/boringssl/ssl/libssl.a',
+    'third_party/boringssl/crypto/libcrypto.a',
+  )
   dsts = drake.nodes(
      grpc_cpp_plugin,
      grpc_python_plugin) + [
-     protoc
+       protoc,
+       protobuf_lib,
      ] + sources
   # Do not build everything.
   targets = [
@@ -138,8 +134,11 @@ def configure(
   cmake = drake.cmake.CMakeBuilder(cxx_toolkit, srcs, dsts,
                                    vars = cmake_vars, targets = targets,
                                    path_to_cmake_source = cmake_source)
-  cxx_config = drake.cxx.Config(in_cxx_config)
+  cxx_config = drake.cxx.Config()
   cxx_config.define('_WIN32_WINNT', '0x600')
+  protobuf_include = 'third_party/protobuf/src'
+  cxx_config.protobuf_include_dir = \
+    drake.path_root() / drake.path_source(protobuf_include)
   cxx_config.add_system_include_path(protobuf_include)
   cxx_config.add_system_include_path('include')
 
