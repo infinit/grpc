@@ -108,6 +108,7 @@ def configure(
     'libgpr.a',
     'third_party/boringssl/ssl/libssl.a',
     'third_party/boringssl/crypto/libcrypto.a',
+    'third_party/zlib/libz{}.a'.format('libstatic' if windows else ''),
   )
   dsts = drake.nodes(
      grpc_cpp_plugin,
@@ -135,7 +136,8 @@ def configure(
                                    vars = cmake_vars, targets = targets,
                                    path_to_cmake_source = cmake_source)
   cxx_config = drake.cxx.Config()
-  cxx_config.define('_WIN32_WINNT', '0x600')
+  if windows:
+    cxx_config.define('_WIN32_WINNT', '0x600')
   protobuf_include = 'third_party/protobuf/src'
   cxx_config.protobuf_include_dir = \
     drake.path_root() / drake.path_source(protobuf_include)
@@ -143,8 +145,6 @@ def configure(
   cxx_config.add_system_include_path('include')
 
   cxx_config_lib = drake.cxx.Config(cxx_config)
-  cxx_config_lib.ldflag('-L%s' % drake.path_build('third_party/zlib', absolute = True))
-  cxx_config_lib.lib('z')
   cxx_config_lib.use_whole_archive()
   if windows:
     cxx_config_lib.lib('ws2_32')
