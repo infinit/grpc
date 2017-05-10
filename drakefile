@@ -4,15 +4,6 @@ import drake.cxx
 
 import os
 
-shlibexts = {
-  drake.os.android: 'so',
-  drake.os.ios: 'dylib',
-  drake.os.ios_simulator: 'dylib',
-  drake.os.linux: 'so',
-  drake.os.macos: 'dylib',
-  drake.os.windows: 'dll',
-}
-
 with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
@@ -36,13 +27,9 @@ def configure(
   EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   # protobuf lib.
+  libtype = drake.cxx.StaticLib if windows else drake.cxx.DynLib
   global protobuf_headers, protobuf_lib
-  if windows:
-    protobuf_lib = drake.cxx.StaticLib('third_party/protobuf/libprotobuf.a')
-  else:
-    protobuf_lib = drake.cxx.DynLib(
-      'third_party/protobuf/libprotobuf.{}'
-      .format(shlibexts[cxx_toolkit.os]))
+  protobuf_lib = libtype('third_party/protobuf/protobuf', tk = cxx_toolkit)
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
     'any.h',
