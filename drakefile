@@ -17,18 +17,10 @@ grpc_python_plugin = None
 libgrpcxx = None
 sources = None
 
-class GRPCBuilder(drake.cmake.CMakeBuilder):
-
-  def execute(self):
-    if super().execute():
-      drake.cxx.set_lib_id(protobuf_lib.path(), self.toolkit)
-      return True
-    else:
-      return False
-
 def configure(
     cxx_toolkit,
     in_cxx_config,
+    cxx_lib, # libc++ for macOS, or None.
     cmake_vars = {}
 ):
   global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
@@ -128,6 +120,23 @@ def configure(
     'protobuf_BUILD_SHARED_LIBS': 'OFF' if windows else 'ON' ,
     'protobuf_BUILD_TESTS': 'OFF',
     })
+
+  class GRPCBuilder(drake.cmake.CMakeBuilder):
+
+    def execute(self):
+      if super().execute():
+        # Let libprotobuf use our libraries, including libc++ on Darwin.
+        drake.cxx.set_lib_id(protobuf_lib.path(), self.toolkit)
+        if cxx_lib:
+          drake.copy(cxx_lib, protobuf_lib.path().dirname(), True)
+        return True
+      else:
+        return False
+
+      def hash(self):
+        # Salt with a version number of this builder.
+        return (super().hash(), 5)
+
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
                       path_to_cmake_source = cmake_source)
