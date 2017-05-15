@@ -104,7 +104,7 @@ def configure(
        protoc,
        protobuf_lib,
      ] + sources
-  # Do not build everything.
+  # make targets.  Do not build everything.
   targets = [
     'grpc',
     'grpc++',
@@ -117,8 +117,10 @@ def configure(
   else:
     cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
   cmake_vars.update({
-    'protobuf_BUILD_SHARED_LIBS': 'OFF' if windows else 'ON' ,
+    'protobuf_BUILD_SHARED_LIBS': 'OFF' if windows else 'ON',
     'protobuf_BUILD_TESTS': 'OFF',
+    # FIXME: We don't seem to be using the Zlib features.
+    'protobuf_WITH_ZLIB': 'OFF',
     })
 
   class GRPCBuilder(drake.cmake.CMakeBuilder):
@@ -135,7 +137,7 @@ def configure(
 
     def hash(self):
       # Salt with a version number of this builder.
-      return (super().hash(), 0)
+      return (super().hash(), 3)
 
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
