@@ -23,14 +23,15 @@ def configure(
     cxx_lib, # libc++ for macOS, or None.
     cmake_vars = {}
 ):
-  global cxx_config, cxx_config_lib, protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
+  global protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
   windows = cxx_toolkit.os == drake.os.windows
   EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
   # protobuf lib.
   libtype = drake.cxx.StaticLib if windows else drake.cxx.DynLib
   global protobuf_headers, protobuf_lib
-  protobuf_lib = libtype('third_party/protobuf/protobuf', tk = cxx_toolkit)
+  protobuf_lib = libtype('third_party/protobuf/protobuf',
+                         tk = cxx_toolkit, cfg = in_cxx_config)
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
     'any.h',
@@ -121,6 +122,7 @@ def configure(
     'protobuf_BUILD_TESTS': 'OFF',
     # FIXME: We don't seem to be using the Zlib features.
     'protobuf_WITH_ZLIB': 'OFF',
+    'CMAKE_CXX_FLAGS': '-stdlib=libc++' if cxx_toolkit.os == drake.os.macos else '',
     })
 
   class GRPCBuilder(drake.cmake.CMakeBuilder):
@@ -129,8 +131,9 @@ def configure(
       if super().execute():
         # Let libprotobuf use our libraries, including libc++ on Darwin.
         drake.cxx.set_lib_id(protobuf_lib.path())
+        dir = protobuf_lib.path().dirname()
         if cxx_lib:
-          drake.copy(cxx_lib, protobuf_lib.path().dirname(), True)
+          drake.copy(cxx_lib, dir, strip_prefix = True)
         return True
       else:
         return False
@@ -142,7 +145,8 @@ def configure(
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
                       path_to_cmake_source = cmake_source)
-  cxx_config = drake.cxx.Config()
+  global cxx_config, cxx_config_lib
+  cxx_config = in_cxx_config
   if windows:
     cxx_config.define('_WIN32_WINNT', '0x600')
   protobuf_include = 'third_party/protobuf/src'
