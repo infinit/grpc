@@ -116,7 +116,9 @@ def configure(
   if drake.path_source().absolute():
     cmake_source = drake.path_source() / drake.Drake.current.prefix
   else:
-    cmake_source = drake.path_source() / '..' / '..' / '..' / '..' / drake.Drake.current.prefix
+    cmake_source = drake.node('CMakeLists.txt').path().dirname()
+    cmake_source = cmake_source.without_prefix(drake.Drake.current.prefix)
+
   cmake_vars.update({
     'protobuf_BUILD_SHARED_LIBS': 'OFF' if windows else 'ON',
     'protobuf_BUILD_TESTS': 'OFF',
