@@ -138,9 +138,10 @@ def configure(
         # Let libprotobuf use our libraries, including libc++ on Darwin.
         drake.cxx.set_lib_id(protobuf_lib.path())
         dir = protobuf_lib.path().dirname()
-        self.cmd('Fix rpath for {}'.format(protoc),
-                 cxx_toolkit.rpath_set_command(protoc, '.'),
-                 throw = True)
+        if cxx_toolkit.os is not drake.os.windows:
+          self.cmd('Fix rpath for {}'.format(protoc),
+                   cxx_toolkit.rpath_set_command(protoc, '.'),
+                   throw = True)
         # The zlib builds pollutes the build tree, fix it back
         for g in garbage:
           try:
