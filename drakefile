@@ -23,6 +23,7 @@ def configure(
     cmake_vars = {}
 ):
   global protoc, grpc_cpp_plugin, grpc_python_plugin, libgrpcxx, sources
+  zlib_git = drake.git.Git('third_party/zlib')
   windows = cxx_toolkit.os == drake.os.windows
   EXE = '.exe' if windows else ''
   protoc = drake.Node('third_party/protobuf/protoc' + EXE)
@@ -31,6 +32,10 @@ def configure(
   global protobuf_headers, protobuf_lib
   protobuf_lib = libtype('third_party/protobuf/protobuf',
                          tk = cxx_toolkit, cfg = in_cxx_config)
+  # Garbage files the cmake build generates in the source tree
+  garbage = drake.nodes('third_party/zlib/zconf.h.included')
+  # Files the cmake builds removes from the source tree
+  nuked = ['zconf.h']
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
     'any.h',
@@ -136,6 +141,14 @@ def configure(
         self.cmd('Fix rpath for {}'.format(protoc),
                  cxx_toolkit.rpath_set_command(protoc, '.'),
                  throw = True)
+        # The zlib builds pollutes the build tree, fix it back
+        for g in garbage:
+          try:
+            os.remove(str(g.path()))
+          except FileNotFoundError:
+            pass
+        for n in nuked:
+          zlib_git.run(['checkout', 'HEAD', n])
         return True
       else:
         return False
