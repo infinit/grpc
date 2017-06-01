@@ -123,7 +123,7 @@ def configure(
     'protobuf_BUILD_TESTS': 'OFF',
     # FIXME: We don't seem to be using the Zlib features.
     'protobuf_WITH_ZLIB': 'OFF',
-    'CMAKE_CXX_FLAGS': '-stdlib=libc++' if cxx_toolkit.os == drake.os.macos else '',
+    'CMAKE_CXX_FLAGS': '-w ' + ('-stdlib=libc++' if cxx_toolkit.os == drake.os.macos else ''),
     })
 
   class GRPCBuilder(drake.cmake.CMakeBuilder):
