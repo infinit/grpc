@@ -138,7 +138,6 @@ def configure(
       if super().execute():
         # Let libprotobuf use our libraries, including libc++ on Darwin.
         drake.cxx.set_lib_id(protobuf_lib.path())
-        dir = protobuf_lib.path().dirname()
         if cxx_toolkit.os is not drake.os.windows:
           self.cmd('Fix rpath for {}'.format(protoc),
                    cxx_toolkit.rpath_set_command(protoc, '.'),
@@ -157,7 +156,7 @@ def configure(
 
     def hash(self):
       # Salt with a version number of this builder.
-      return (super().hash(), 4)
+      return (super().hash(), 5)
 
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
