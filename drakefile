@@ -32,6 +32,8 @@ def configure(
   global protobuf_headers, protobuf_lib
   protobuf_lib = libtype('third_party/protobuf/protobuf',
                          tk = cxx_toolkit, cfg = in_cxx_config)
+  protoc_lib = libtype('third_party/protobuf/protoc',
+                         tk = cxx_toolkit, cfg = in_cxx_config)
   # Garbage files the cmake build generates in the source tree
   garbage = drake.nodes('third_party/zlib/zconf.h.included')
   # Files the cmake builds removes from the source tree
@@ -107,6 +109,7 @@ def configure(
      grpc_cpp_plugin,
      grpc_python_plugin) + [
        protoc,
+       protoc_lib,
        protobuf_lib,
      ] + sources
   # make targets.  Do not build everything.
