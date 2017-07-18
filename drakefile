@@ -1,8 +1,8 @@
 import drake
 import drake.cmake
 import drake.cxx
-
 import os.path
+import sys
 
 with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
@@ -36,7 +36,7 @@ def configure(
                          tk = cxx_toolkit, cfg = in_cxx_config)
   # Garbage files the cmake build generates in the source tree
   garbage = drake.nodes('third_party/zlib/zconf.h.included')
-  # Files the cmake builds removes from the source tree
+  # Files the cmake build removes from the source tree.
   nuked = ['zconf.h']
   protobuf_headers = drake.nodes(*['third_party/protobuf/src/google/protobuf/{}'.format(f)
                                  for f in [
@@ -141,11 +141,37 @@ def configure(
       if super().execute():
         # Let libprotobuf use our libraries, including libc++ on Darwin.
         drake.cxx.set_lib_id(protobuf_lib.path())
-        if cxx_toolkit.os is not drake.os.windows:
-          self.cmd('Fix rpath for {}'.format(protoc),
-                   cxx_toolkit.rpath_set_command(protoc, '.'),
-                   throw = True)
-        # The zlib builds pollutes the build tree, fix it back
+        drake.cxx.set_lib_id(protoc_lib.path())
+        # Be sure not to keep an absolute rpath, that's disastrous
+        # with our build-env cache, as we would finish by having
+        # pieces of protobuf in one build look for other pieces in
+        # another build (which might no longer exist).
+        for l in [protoc]:
+          self.cmd('Fix rpath for {}'.format(l),
+                   cxx_toolkit.rpath_set_command(l, '.'))
+        # These guys have dependencies (on libprotobuf, etc.) in a deeper director.
+        for l in [grpc_cpp_plugin, grpc_python_plugin]:
+          self.cmd('Fix rpath for {}'.format(l),
+                   cxx_toolkit.rpath_set_command(l, 'third_party/protobuf'))
+        # This is quite some code duplication with
+        # drake/cxx/__init__.py's PatchAndInstall.  We need something
+        # more reusable.
+        if sys.platform == 'darwin':
+          for l in [grpc_cpp_plugin, grpc_python_plugin, protoc, protoc_lib]:
+            path = l.path()
+            out = subprocess.check_output(['otool', '-L',  str(path)])
+            lines = out.decode('utf-8').strip().split('\n')
+            deps = [
+              x.replace('\t', '').split(' ')[0]
+              for x in lines[1:] if 'libstdc++' in x or 'libgcc_s' in x
+            ]
+            for d in deps:
+              drake.command([
+                'install_name_tool',
+                '-change', d, '@rpath/%s' % (os.path.basename(d)),
+                str(path)
+              ])
+        # The zlib builds pollutes the build tree, fix it back.
         for g in garbage:
           try:
             os.remove(str(g.path()))
@@ -159,7 +185,7 @@ def configure(
 
     def hash(self):
       # Salt with a version number of this builder.
-      return (super().hash(), 5)
+      return (super().hash(), 7)
 
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
