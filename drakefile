@@ -91,9 +91,9 @@ def configure(
     'wire_format_lite_inl.h',
     'wrappers.pb.h',
     ]])
-  grpc_cpp_plugin = drake.path_build('grpc_cpp_plugin' + EXE, absolute = True)
-  grpc_python_plugin = drake.path_build('grpc_python_plugin' + EXE, absolute = True)
-  libgrpcxx = drake.path_build('libgrpc++.a', absolute = True)
+  grpc_cpp_plugin = drake.node('grpc_cpp_plugin' + EXE)
+  grpc_python_plugin = drake.node('grpc_python_plugin' + EXE)
+  libgrpcxx = drake.path_build('libgrpc++.a')
   srcs = drake.nodes(
     'CMakeLists.txt',
     )
@@ -105,13 +105,13 @@ def configure(
     'third_party/boringssl/crypto/libcrypto.a',
     'third_party/zlib/libz{}.a'.format('libstatic' if windows else ''),
   )
-  dsts = drake.nodes(
-     grpc_cpp_plugin,
-     grpc_python_plugin) + [
-       protoc,
-       protoc_lib,
-       protobuf_lib,
-     ] + sources
+  dsts = sources + [
+    grpc_cpp_plugin,
+    grpc_python_plugin,
+    protoc,
+    protoc_lib,
+    protobuf_lib,
+  ]
   # make targets.  Do not build everything.
   targets = [
     'grpc',
