@@ -146,13 +146,14 @@ def configure(
         # with our build-env cache, as we would finish by having
         # pieces of protobuf in one build look for other pieces in
         # another build (which might no longer exist).
-        for l in [protoc]:
-          self.cmd('Fix rpath for {}'.format(l),
-                   cxx_toolkit.rpath_set_command(l, '.'))
-        # These guys have dependencies (on libprotobuf, etc.) in a deeper director.
-        for l in [grpc_cpp_plugin, grpc_python_plugin]:
-          self.cmd('Fix rpath for {}'.format(l),
-                   cxx_toolkit.rpath_set_command(l, 'third_party/protobuf'))
+        for libs, path in [
+            ([protoc], '.'),
+            ([grpc_cpp_plugin, grpc_python_plugin],
+             'third_party/protobuf')
+        ]:
+          for l in libs:
+            self.cmd('Fix rpath for {}'.format(l),
+                     cxx_toolkit.rpath_set_command(l, path))
         # This is quite some code duplication with
         # drake/cxx/__init__.py's PatchAndInstall.  We need something
         # more reusable.
