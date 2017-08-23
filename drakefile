@@ -147,7 +147,7 @@ def configure(
         # pieces of protobuf in one build look for other pieces in
         # another build (which might no longer exist).
         for libs, path in [
-            ([protoc], '.'),
+            ([protoc, protoc_lib], '.'),
             ([grpc_cpp_plugin, grpc_python_plugin],
              'third_party/protobuf')
         ]:
@@ -186,7 +186,7 @@ def configure(
 
     def hash(self):
       # Salt with a version number of this builder.
-      return (super().hash(), 7)
+      return (super().hash(), 8)
 
   cmake = GRPCBuilder(cxx_toolkit, srcs, dsts,
                       vars = cmake_vars, targets = targets,
