@@ -4,9 +4,6 @@ import drake.cxx
 import os.path
 import sys
 
-with open(str(drake.path_source('../../../../elle/drake-utils.py')), 'r') as f:
-  exec(f.read(), globals(), globals())
-
 cxx_config = None
 cxx_config_lib = None
 protoc = None
