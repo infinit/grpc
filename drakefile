@@ -157,6 +157,7 @@ def configure(
         if sys.platform == 'darwin':
           for l in [grpc_cpp_plugin, grpc_python_plugin, protoc, protoc_lib]:
             path = l.path()
+            import subprocess
             out = subprocess.check_output(['otool', '-L',  str(path)])
             lines = out.decode('utf-8').strip().split('\n')
             deps = [
